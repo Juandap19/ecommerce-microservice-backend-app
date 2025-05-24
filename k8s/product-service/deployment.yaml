@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: product-service
-          image: jacoboossag/product-service:latest
+          image: minichocolate/product-service:latest
           # imagePullPolicy: IfNotPresent # O Always si la imagen se actualiza frecuentemente en el registry
           ports:
             - containerPort: 8500

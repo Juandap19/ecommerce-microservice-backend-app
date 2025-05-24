@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: shipping-service
-          image:  jacoboossag/shipping-service:latest
+          image:  minichocolate/shipping-service:latest
           # imagePullPolicy: IfNotPresent 
           ports:
             - containerPort: 8600

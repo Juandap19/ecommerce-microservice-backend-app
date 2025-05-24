@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: payment-service
-          image: jacoboossag/payment-service:latest
+          image: minichocolate/payment-service:latest
           ports:
             - containerPort: 8400
           # resources:

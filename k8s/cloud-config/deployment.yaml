@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: cloud-config
-        image: jacoboossag/cloud-config:latest
+        image: minichocolate/cloud-config:latest
         ports:
         - containerPort: 9296
         env:
