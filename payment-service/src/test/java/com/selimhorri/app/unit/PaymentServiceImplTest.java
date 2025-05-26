@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-public class TestPaymentServiceImplTest {
+public class PaymentServiceImplTest {
 
     private PaymentRepository paymentRepository;
     private RestTemplate restTemplate;
