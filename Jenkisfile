@@ -2,16 +2,15 @@ pipeline {
     agent any
 
     tools {
-        maven 'MVN'
+        maven 'mvn'
         jdk 'JDK_11'
     }
 
     environment {
-        DOCKERHUB_USER = 'juanmadrid09'
+        DOCKERHUB_USER = 'minichocolate'
         DOCKER_CREDENTIALS_ID = 'password'
         SERVICES = 'api-gateway cloud-config favourite-service order-service payment-service product-service proxy-client service-discovery shipping-service user-service'
         K8S_NAMESPACE = 'ecommerce'
-        KUBECONFIG = 'C:\\Users\\ACER\\.kube\\config'
     }
 
 
@@ -65,7 +64,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/JuanMadrid-09/ecommerce-microservice-backend-app.git'
+                git branch: "${env.BRANCH_NAME}", url: 'https://github.com/Juandap19/ecommerce-microservice-backend-app.git'
             }
         }
 
