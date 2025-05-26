@@ -109,7 +109,7 @@ pipeline {
                         script {
                             echo "🧪 Running Integration Tests for ${env.BRANCH_NAME}"
                             bat "mvn verify -pl product-service"
-                            bat "mvn test -pl user-service"
+                            bat "mvn verify -pl user-service"
                         }
                     }
                 }
