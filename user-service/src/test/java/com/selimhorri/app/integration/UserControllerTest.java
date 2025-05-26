@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
                 
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-public class UserServiceIntegrationTest {
+public class UserControllerTest  {
 
     @LocalServerPort
     private int port;
