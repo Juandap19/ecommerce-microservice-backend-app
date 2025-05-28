@@ -9,7 +9,7 @@ pipeline {
     environment {
         DOCKERHUB_USER = 'minichocolate'
         DOCKER_CREDENTIALS_ID = 'password'
-        SERVICES = 'api-gateway cloud-config favourite-service order-service payment-service product-service proxy-client service-discovery shipping-service user-service'
+        SERVICES = 'api-gateway cloud-config favourite-service order-service payment-service product-service proxy-client service-discovery shipping-service user-service locust'
         K8S_NAMESPACE = 'ecommerce'
         KUBECONFIG = 'C:\\Users\\usuario\\.kube\\config'
     }
