@@ -128,14 +128,14 @@ pipeline {
 
 
        stage('Build & Package') {
-                   when { anyOf { branch 'master'; branch 'release' } }
+                   when { anyOf { branch 'master'; branch 'stage' } }
                    steps {
                        bat "mvn clean package -DskipTests"
                    }
                }
 
        stage('Build & Push Docker Images') {
-           when { branch 'master' }
+           when { anyOf { branch 'stage'; branch 'master' } }
            steps {
                withCredentials([string(credentialsId: "${DOCKER_CREDENTIALS_ID}", variable: 'password')]) {
                    bat "docker login -u ${DOCKERHUB_USER} -p ${password}"
@@ -150,11 +150,17 @@ pipeline {
            }
        }
 
-     stage('Levantar contenedores para pruebas') {
+     stage('Start containers for testing') {
+         when {
+                anyOf {
+                    branch 'dev'
+                    expression { env.BRANCH_NAME.startsWith('feature/') }
+                }
+            }
          steps {
              script {
                  powershell '''
-                 # Función para esperar que un servicio esté saludable
+                 # Function to wait for a service to be healthy
                  function Wait-ForHealthCheck {
                      param(
                          [string]$Url,
@@ -162,34 +168,34 @@ pipeline {
                          [int]$TimeoutSeconds = 300
                      )
 
-                     Write-Host "⌛ Esperando $ServiceName..." -ForegroundColor Yellow
+                     Write-Host "⌛ Waiting $ServiceName..." -ForegroundColor Yellow
                      $startTime = Get-Date
 
                      do {
                          try {
                              $response = Invoke-RestMethod -Uri $Url -Method Get -TimeoutSec 5 -ErrorAction SilentlyContinue
                              if ($response.status -eq "UP") {
-                                 Write-Host "✅ $ServiceName está saludable!" -ForegroundColor Green
+                                 Write-Host "✅ $ServiceName It's healthy!" -ForegroundColor Green
                                  return $true
                              }
                          }
                          catch {
-                             # Continúa intentando
+                             # Retry until successful
                          }
 
                          Start-Sleep -Seconds 5
                          $elapsed = (Get-Date) - $startTime
 
                          if ($elapsed.TotalSeconds -gt $TimeoutSeconds) {
-                             Write-Host "❌ Timeout esperando $ServiceName" -ForegroundColor Red
+                             Write-Host "❌ Timeout Waiting $ServiceName" -ForegroundColor Red
                              return $false
                          }
 
-                         Write-Host "⌛ Esperando $ServiceName... ($([int]$elapsed.TotalSeconds)s)" -ForegroundColor Yellow
+                         Write-Host "⌛ Waiting $ServiceName... ($([int]$elapsed.TotalSeconds)s)" -ForegroundColor Yellow
                      } while ($true)
                  }
 
-                 # Función para esperar health check con JSON complejo
+                 # Function to wait for health check with complex JSON
                  function Wait-ForHealthCheckWithJq {
                      param(
                          [string]$Url,
@@ -197,74 +203,74 @@ pipeline {
                          [int]$TimeoutSeconds = 300
                      )
 
-                     Write-Host "⌛ Esperando $ServiceName..." -ForegroundColor Yellow
+                     Write-Host "⌛ Waiting $ServiceName..." -ForegroundColor Yellow
                      $startTime = Get-Date
 
                      do {
                          try {
                              $response = Invoke-RestMethod -Uri $Url -Method Get -TimeoutSec 5 -ErrorAction SilentlyContinue
                              if ($response.status -eq "UP") {
-                                 Write-Host "✅ $ServiceName está saludable!" -ForegroundColor Green
+                                 Write-Host "✅ $ServiceName It's healthy!" -ForegroundColor Green
                                  return $true
                              }
                          }
                          catch {
-                             # Continúa intentando
+                             # Retry until successful
                          }
 
                          Start-Sleep -Seconds 5
                          $elapsed = (Get-Date) - $startTime
 
                          if ($elapsed.TotalSeconds -gt $TimeoutSeconds) {
-                             Write-Host "❌ Timeout esperando $ServiceName" -ForegroundColor Red
+                             Write-Host "❌ Timeout Waiting $ServiceName" -ForegroundColor Red
                              return $false
                          }
 
-                         Write-Host "⌛ Esperando $ServiceName... ($([int]$elapsed.TotalSeconds)s)" -ForegroundColor Yellow
+                         Write-Host "⌛ Waiting $ServiceName... ($([int]$elapsed.TotalSeconds)s)" -ForegroundColor Yellow
                      } while ($true)
                  }
 
                  try {
-                     # Crear red de Docker
+                     # create Docker network if it doesn't exist
                      Write-Host "🌐 Creando red de Docker..." -ForegroundColor Cyan
                      docker network create ecommerce-test 2>$null
                      if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1) {
-                         throw "Error creando la red de Docker"
+                         throw "Error creating Docker network"
                      }
 
                      # 1. ZIPKIN
-                     Write-Host "🚀 Levantando ZIPKIN..." -ForegroundColor Cyan
+                     Write-Host "🚀 Launching ZIPKIN..." -ForegroundColor Cyan
                      docker run -d --name zipkin-container --network ecommerce-test -p 9411:9411 openzipkin/zipkin
-                     if ($LASTEXITCODE -ne 0) { throw "Error levantando Zipkin" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Zipkin" }
 
                      # 2. EUREKA (Service Discovery)
-                     Write-Host "🚀 Levantando EUREKA..." -ForegroundColor Cyan
+                     Write-Host "🚀 Launching EUREKA..." -ForegroundColor Cyan
                      docker run -d --name service-discovery-container --network ecommerce-test -p 8761:8761 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
                          minichocolate/service-discovery:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error levantando Eureka" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Eureka" }
 
                      if (!(Wait-ForHealthCheck -Url "http://localhost:8761/actuator/health" -ServiceName "EUREKA")) {
-                         throw "EUREKA no se pudo levantar correctamente"
+                         throw "Eureka could not be started correctly"
                      }
 
                      # 3. CLOUD-CONFIG
-                     Write-Host "🚀 Levantando CLOUD-CONFIG..." -ForegroundColor Cyan
+                     Write-Host "🚀 Launching CLOUD-CONFIG..." -ForegroundColor Cyan
                      docker run -d --name cloud-config-container --network ecommerce-test -p 9296:9296 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
                          -e EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-container:8761/eureka/ `
                          -e EUREKA_INSTANCE=cloud-config-container `
                          minichocolate/cloud-config:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error levantando Cloud Config" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Cloud Config" }
 
                      if (!(Wait-ForHealthCheck -Url "http://localhost:9296/actuator/health" -ServiceName "CLOUD-CONFIG")) {
-                         throw "CLOUD-CONFIG no se pudo levantar correctamente"
+                         throw "CLOUD-CONFIG could not be started correctly"
                      }
 
                      # 4. ORDER-SERVICE
-                     Write-Host "🚀 Levantando ORDER-SERVICE..." -ForegroundColor Cyan
+                     Write-Host "🚀 Launching ORDER-SERVICE..." -ForegroundColor Cyan
                      docker run -d --name order-service-container --network ecommerce-test -p 8300:8300 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -272,14 +278,14 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=order-service-container `
                         minichocolate/order-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error levantando Order Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Order Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8300/order-service/actuator/health" -ServiceName "ORDER-SERVICE")) {
-                         throw "ORDER-SERVICE no se pudo levantar correctamente"
+                         throw "ORDER-SERVICE could not be started correctly"
                      }
 
                      # 5. PAYMENT-SERVICE
-                     Write-Host "🚀 Levantando PAYMENT..." -ForegroundColor Cyan
+                     Write-Host "🚀 Launching PAYMENT..." -ForegroundColor Cyan
                      docker run -d --name payment-service-container --network ecommerce-test -p 8400:8400 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -287,14 +293,14 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=payment-service-container `
                          minichocolate/payment-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error levantando Payment Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Payment Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8400/payment-service/actuator/health" -ServiceName "PAYMENT-SERVICE")) {
-                         throw "PAYMENT-SERVICE no se pudo levantar correctamente"
+                         throw "PAYMENT-SERVICE could not be started correctly"
                      }
 
                      # 6. PRODUCT-SERVICE
-                     Write-Host "🚀 Levantando PRODUCT..." -ForegroundColor Cyan
+                     Write-Host "🚀 Launching PRODUCT..." -ForegroundColor Cyan
                      docker run -d --name product-service-container --network ecommerce-test -p 8500:8500 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -302,14 +308,14 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=product-service-container `
                          minichocolate/product-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error levantando Product Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Product Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8500/product-service/actuator/health" -ServiceName "PRODUCT-SERVICE")) {
-                         throw "PRODUCT-SERVICE no se pudo levantar correctamente"
+                         throw "PRODUCT-SERVICE could not be started correctly"
                      }
 
                      # 7. SHIPPING-SERVICE
-                     Write-Host "🚀 Levantando SHIPPING..." -ForegroundColor Cyan
+                     Write-Host "🚀 Launching SHIPPING..." -ForegroundColor Cyan
                      docker run -d --name shipping-service-container --network ecommerce-test -p 8600:8600 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -317,14 +323,14 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=shipping-service-container `
                         minichocolate/shipping-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error levantando Shipping Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Shipping Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8600/shipping-service/actuator/health" -ServiceName "SHIPPING-SERVICE")) {
-                         throw "SHIPPING-SERVICE no se pudo levantar correctamente"
+                         throw "SHIPPING-SERVICE could not be started correctly"
                      }
 
                      # 8. USER-SERVICE
-                     Write-Host "🚀 Levantando USER..." -ForegroundColor Cyan
+                     Write-Host "🚀 Launching USER..." -ForegroundColor Cyan
                      docker run -d --name user-service-container --network ecommerce-test -p 8700:8700 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -332,14 +338,14 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=user-service-container `
                          minichocolate/user-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error levantando User Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error Launching User Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8700/user-service/actuator/health" -ServiceName "USER-SERVICE")) {
-                         throw "USER-SERVICE no se pudo levantar correctamente"
+                         throw "USER-SERVICE could not be started correctly"
                      }
 
                      # 9. FAVOURITE-SERVICE
-                     Write-Host "🚀 Levantando FAVOURITE..." -ForegroundColor Cyan
+                     Write-Host "🚀 Launching FAVOURITE..." -ForegroundColor Cyan
                      docker run -d --name favourite-service-container --network ecommerce-test -p 8800:8800 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -347,19 +353,19 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=favourite-service-container `
                          minichocolate/favourite-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error levantando Favourite Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Favourite Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8800/favourite-service/actuator/health" -ServiceName "FAVOURITE-SERVICE")) {
-                         throw "FAVOURITE-SERVICE no se pudo levantar correctamente"
+                         throw "FAVOURITE-SERVICE could not be started correctly"
                      }
 
-                     Write-Host "✅ Todos los contenedores están arriba y saludables." -ForegroundColor Green
+                     Write-Host "✅ All containers are up and healthy" -ForegroundColor Green
                  }
                  catch {
                      Write-Host "❌ Error: $_" -ForegroundColor Red
-                     Write-Host "🧹 Limpiando contenedores..." -ForegroundColor Yellow
+                     Write-Host "🧹 Cleaning Containers..." -ForegroundColor Yellow
 
-                     # Cleanup en caso de error
+                     # Cleanup containers if any error occurs
                      $containers = @(
                          "favourite-service-container",
                          "user-service-container",
@@ -378,7 +384,7 @@ pipeline {
                      }
 
                      docker network rm ecommerce-test 2>$null
-                     throw "Falló el levantamiento de contenedores"
+                     throw "Failed to start all containers. Check the logs for details."
                  }
                  '''
              }
@@ -390,13 +396,17 @@ pipeline {
 
 
        stage('Run Load Tests with Locust') {
-
-           when { branch 'master' }
+           when {
+                anyOf {
+                    branch 'dev'
+                    expression { env.BRANCH_NAME.startsWith('feature/') }
+                }
+            }
            steps {
                script {
                    bat '''
 
-                   echo 🚀 Levantando Locust para order-service...
+                   echo 🚀 Launching Locust for order-service...
                    docker run --rm --network ecommerce-test ^
                      -v "%CD%\\locust:/mnt" ^
                      -v "%CD%\\locust-results:/app" ^
@@ -406,7 +416,7 @@ pipeline {
                      --headless -u 5 -r 1 -t 1m ^
                      --csv order-service-stats --csv-full-history
 
-                   echo 🚀 Levantando Locust para payment-service...
+                   echo 🚀 Launching Locust for payment-service...
 
                    docker run --rm --network ecommerce-test ^
                      -v "%CD%\\locust:/mnt" ^
@@ -417,7 +427,7 @@ pipeline {
                      --headless -u 5 -r 1 -t 1m ^
                      --csv payment-service-stats --csv-full-history
 
-                   echo 🚀 Levantando Locust para favourite-service...
+                   echo 🚀 Launching Locust for favourite-service...
 
                    docker run --rm --network ecommerce-test ^
                      -v "%CD%\\locust:/mnt" ^
@@ -428,18 +438,23 @@ pipeline {
                      --headless -u 5 -r 1 -t 1m ^
                      --csv favourite-service-stats --csv-full-history
 
-                   echo ✅ Pruebas completadas
+                   echo ✅ Tests Completed
                    '''
                }
            }
        }
 
        stage('Run Stress Tests with Locust') {
-           when { branch 'master' }
+           when {
+                anyOf {
+                    branch 'dev'
+                    expression { env.BRANCH_NAME.startsWith('feature/') }
+                }
+            }
            steps {
                script {
                    bat '''
-                   echo 🔥 Levantando Locust para prueba de estrés...
+                   echo 🔥 Launching Locust for Stress tests...
 
                    docker run --rm --network ecommerce-test ^
                    -v "%CD%\\locust:/mnt" ^
@@ -468,7 +483,7 @@ pipeline {
                    --headless -u 10 -r 1 -t 1m ^
                    --csv favourite-service-stress --csv-full-history
 
-                   echo ✅ Pruebas de estrés completadas
+                   echo ✅ Stress tests Completed
                    '''
                }
            }
@@ -476,11 +491,17 @@ pipeline {
 
 
 
-       stage('Detener y eliminar contenedores') {
+       stage('Stop and remove containers') {
+         when {
+                anyOf {
+                    branch 'dev'
+                    expression { env.BRANCH_NAME.startsWith('feature/') }
+                }
+            }
            steps {
                script {
                    bat """
-                   echo 🛑 Deteniendo y eliminando contenedores...
+                   echo 🛑 Stop and remove containers...
 
                    docker rm -f locust || exit 0
                    docker rm -f favourite-service-container || exit 0
@@ -493,21 +514,21 @@ pipeline {
                    docker rm -f service-discovery-container || exit 0
                    docker rm -f zipkin-container || exit 0
 
-                   echo 🧹 Todos los contenedores eliminados
+                   echo 🧹 All containers removed
                    """
                }
            }
        }
 
         stage('Deploy Common Config') {
-            when { branch 'master' }
+            when { anyOf { branch 'stage'; branch 'master' } }
             steps {
                 bat "kubectl apply -f k8s\\common-config.yaml -n ${K8S_NAMESPACE}"
             }
         }
 
         stage('Deploy Core Services') {
-            when { branch 'master' }
+           when { anyOf { branch 'stage'; branch 'master' } }
             steps {
                 bat "kubectl apply -f k8s\\zipkin -n ${K8S_NAMESPACE}"
                 bat "kubectl rollout status deployment/zipkin -n ${K8S_NAMESPACE} --timeout=200s"
@@ -525,21 +546,21 @@ pipeline {
 
 
          stage('Deploy Microservices') {
-                    when { branch 'master' }
-                    steps {
-                        script {
-                            echo "👻👻👻👻👻"
-        //                     SERVICES.split().each { svc ->
-        //                         if (!['user-service', ].contains(svc)) {
-        //                             bat "kubectl apply -f k8s\\${svc} -n ${K8S_NAMESPACE}"
-        //                             bat "kubectl set image deployment/${svc} ${svc}=${DOCKERHUB_USER}/${svc}:${IMAGE_TAG} -n ${K8S_NAMESPACE}"
-        //                             bat "kubectl set env deployment/${svc} SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE} -n ${K8S_NAMESPACE}"
-        //                             bat "kubectl rollout status deployment/${svc} -n ${K8S_NAMESPACE} --timeout=300s"
-        //                         }
-        //                     }
+            when { anyOf { branch 'stage'; branch 'master' } }
+            steps {
+                script {
+                    echo "👻👻👻👻👻"
+                    SERVICES.split().each { svc ->
+                        if (!['user-service', ].contains(svc)) {
+                            bat "kubectl apply -f k8s\\${svc} -n ${K8S_NAMESPACE}"
+                            bat "kubectl set image deployment/${svc} ${svc}=${DOCKERHUB_USER}/${svc}:${IMAGE_TAG} -n ${K8S_NAMESPACE}"
+                            bat "kubectl set env deployment/${svc} SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE} -n ${K8S_NAMESPACE}"
+                            bat "kubectl rollout status deployment/${svc} -n ${K8S_NAMESPACE} --timeout=300s"
                         }
                     }
                 }
+            }
+        } 
 
         stage('Generate Release Notes') {
             when {
@@ -547,7 +568,7 @@ pipeline {
             }
             steps {
                 script {
-                    echo "=== GENERATE RELEASE NOTES ==="
+                    echo "=== GENERATE THE RELEASE NOTES ==="
                     generateReleaseNotes()
                 }
             }
@@ -595,7 +616,7 @@ pipeline {
 }
 
 def generateReleaseNotes() {
-    echo "Generando Release Notes automáticos..."
+    echo "Automatically generating Release Notes..."
 
     try {
         def buildTag = params.BUILD_TAG ?: env.BUILD_ID
