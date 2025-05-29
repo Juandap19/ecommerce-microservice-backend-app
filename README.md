@@ -1,6 +1,3 @@
-Aquí tienes una versión mejorada y traducida al inglés del README, con mejor estructura, redacción profesional, claridad técnica y estilo markdown moderno:
-
----
 
 # 🛒 **eCommerce Microservices Project Documentation**
 
@@ -8,28 +5,30 @@ Aquí tienes una versión mejorada y traducida al inglés del README, con mejor 
 
 ### 1.1 🎯 Workshop Objectives
 
-This workshop aims to guide the development of a **robust, scalable microservices architecture** for an eCommerce system, following industry best practices in software engineering. Beyond implementation, the goal is to foster a deep understanding of:
+This workshop is designed to provide hands-on guidance in building a **resilient, scalable microservices architecture** tailored for modern eCommerce platforms, grounded in industry-proven software engineering practices. It goes beyond technical implementation to cultivate a deep, practical understanding of:
 
-* Microservices principles
-* DevOps culture and automation
-* Software quality and observability
+* Core microservices principles  
+* DevOps culture and automation  
+* Software quality, observability, and resilience  
 
-**Key goals include:**
+**Primary objectives of the workshop include:**
 
-* ✅ Designing a decoupled and scalable architecture
-* 🔁 Automating the entire software lifecycle
-* 📦 Ensuring portability and configuration consistency
-* 🚀 Orchestrating and managing services in production
-* 🧪 Adopting a comprehensive testing strategy
-* 🔍 Guaranteeing observability and traceability
+* ✅ Designing a modular, decoupled architecture built for scalability  
+* 🔁 Automating the end-to-end software delivery lifecycle  
+* 📦 Ensuring environment consistency and deployment portability  
+* 🚀 Managing and orchestrating services in production environments  
+* 🧪 Implementing a robust, multi-level testing strategy  
+* 🔍 Enabling full observability, traceability, and system introspection  
 
----
+
 
 ## 2. 🧩 Architecture Overview
 
 ### 2.1 🧱 Microservices Breakdown
 
 This system consists of **10 core business microservices** and **3 infrastructure services**, each responsible for a specific domain in the eCommerce ecosystem.
+
+
 
 #### 🔹 Business Microservices
 
@@ -57,41 +56,69 @@ This system consists of **10 core business microservices** and **3 infrastructur
 | `proxy-client` | -        | Simplifies HTTP communication between services with circuit breakers.        |
 | `zipkin`       | 9411     | Distributed tracing for monitoring and debugging multi-service interactions. |
 
----
+--- 
+
+### 2.2 🎯 Justification for Service Selection and Integration Strategy
+The selection of these services is strategic and intentional, as they reflect core business capabilities and critical integration flows within a modern eCommerce ecosystem. Their interdependencies make them ideal for implementing meaningful end-to-end (E2E) testing, robust observability, and scalable automation pipelines.
+
+These services were chosen for the following key reasons:
+
+* **Critical Business Coverage:**
+Each business microservice encapsulates a distinct domain (e.g., user management, order processing, payments), collectively representing the primary customer journey. This granularity allows for focused development, testing, and scaling of each functional unit independently.
+
+* **Integration-Oriented Architecture:**
+Services like proxy-client and api-gateway act as integration facilitators. proxy-client orchestrates internal service-to-service communication (e.g., between user-service, product-service, and order-service), while implementing fault-tolerance patterns like circuit breakers. Meanwhile, api-gateway provides a secure and unified external interface, supporting routing, rate limiting, and load balancing.
+
+* **Infrastructure Backbone:**
+service-discovery (via Eureka) and cloud-config form the foundational infrastructure layer. They enable dynamic service registration, centralized configuration management, and environmental consistency, which are essential for operating at scale in a cloud-native setup.
+
+* **Observability and Traceability:**
+zipkin enables distributed tracing, a crucial aspect of maintaining visibility across asynchronous, multi-service interactions—especially under production load or in incident response scenarios.
+
+* **Scalability and Independence:**
+Lightweight services such as favourite-service can scale independently based on usage patterns. This is aligned with the microservices principle of autonomous deployability, reducing the blast radius of deployments and promoting agility.
 
 ## 3. 🧰 Tools & Technologies
 
-### 🚀 Development & Frameworks
 
-* **Spring Boot**: Core framework for microservices
-* **Maven**: Dependency and build management
-* **Java 11**: Stable LTS version
+#### 🚀 Development & Frameworks
 
-### 🛠 DevOps & CI/CD
+- ![Spring Boot](https://img.shields.io/badge/-Spring%20Boot-6DB33F?style=flat&logo=spring-boot&logoColor=white) – **Core framework for microservices**
 
-* **Jenkins**: Automated CI/CD pipelines:
+- ![Maven](https://img.shields.io/badge/-Maven-C71A36?style=flat&logo=apache-maven&logoColor=white)  – **Dependency and build management**
 
-  * Maven build and packaging
-  * Unit, integration, and E2E tests
-  * Docker image build and push
-  * Kubernetes deployment
-* **Git**: Version control with branching strategy (`dev`, `stage`, `master`)
+- ![Java](https://img.shields.io/badge/-Java%2011-007396?style=flat&logo=java&logoColor=white)  – **Stable LTS version** 
 
-### 📦 Containerization & Orchestration
+---
 
-* **Docker**: Portable service containerization
-* **Docker Hub**: Image registry
-* **Kubernetes**: Service orchestration:
+#### 🛠 DevOps & CI/CD
 
-  * Deployments, Services, ConfigMaps
-  * Health checks, rolling updates
-  * Namespace isolation (`ecommerce`)
+- ![Jenkins](https://img.shields.io/badge/-Jenkins-D24939?style=flat&logo=jenkins&logoColor=white)    -  **Automated CI/CD pipelines**:
+  - Maven build and packaging  
+  - Unit, integration, and E2E tests  
+  - Docker image build and push  
+  - Kubernetes deployment  
 
-### ✅ Testing & Quality Assurance
+- ![Git](https://img.shields.io/badge/-Git-F05032?style=flat&logo=git&logoColor=white) - **Version control with branching strategy (`dev`, `stage`, `master`)**
 
-* **JUnit**, **Spring Boot Test**: Unit and integration testing
-* **Locust**: Load and stress testing (10–50 concurrent users)
-* **Testcontainers**: Real-container integration testing
+---
+
+#### 📦 Containerization & Orchestration
+
+- ![Docker](https://img.shields.io/badge/-Docker-2496ED?style=flat&logo=docker&logoColor=white) – **Portable service containerization**  
+- ![Docker Hub](https://img.shields.io/badge/-Docker%20Hub-0db7ed?style=flat&logo=docker&logoColor=white)  – **Image registry for CI/CD pipelines**  
+- ![Kubernetes](https://img.shields.io/badge/-Kubernetes-326CE5?style=flat&logo=kubernetes&logoColor=white)  – **Service orchestration:**
+  - Deployments, Services, ConfigMaps  
+  - Health checks, rolling updates  
+  - Namespace isolation (`ecommerce`)  
+
+---
+
+#### ✅ Testing & Quality Assurance
+
+- ![JUnit](https://img.shields.io/badge/-JUnit&Locust-25A162?style=flat&logo=java&logoColor=white)  -  **Unit and integration testing** 
+- ![Locust](https://img.shields.io/badge/-Locust-000000?style=flat&logo=python&logoColor=white)  - **Load and stress testing (10–50 concurrent users)**
+- ![Testcontainers](https://img.shields.io/badge/-Testcontainers-0db7ed?style=flat&logo=docker&logoColor=white) -  **Real-container integration testing**
 
 ---
 
@@ -119,7 +146,6 @@ This system consists of **10 core business microservices** and **3 infrastructur
 | `stage`         | End-to-end integration testing  |
 | `master`        | Stable production environment   |
 
-Each environment has its own CI/CD pipeline and configuration.
 
 ---
 
@@ -157,31 +183,10 @@ Each environment has its own CI/CD pipeline and configuration.
   * `kubectl logs <pod-name> -n ecommerce`
 * Jenkins automates post-build deployments
 
-### 5.4 📁 Repository Structure
-
-```
-ecommerce-microservice-backend-app/
-├── api-gateway/
-├── cloud-config/
-├── favourite-service/
-├── order-service/
-├── payment-service/
-├── product-service/
-├── proxy-client/
-├── service-discovery/
-├── shipping-service/
-├── user-service/
-├── zipkin/
-├── k8s/
-├── locust/
-├── Jenkinsfile
-├── compose.yml
-└── README.md
-```
 
 ---
 
-## 6. 🔄 CI/CD Pipelines
+## 6. 🔄 CI/CD Pipelines 
 
 > 🛠️ *COMING SOON:* Full breakdown of Jenkins pipelines with visual stages, rollback strategies, and blue-green deployment logic. (Pending section completion.)
 
@@ -189,83 +194,10 @@ ecommerce-microservice-backend-app/
 
 ## 7. 🧪 Testing Strategy
 
-A **multi-layered testing strategy** ensures reliability, scalability, and business correctness across all services.
 
-### 7.1 ✅ Unit Testing
-
-Each service uses **JUnit** and **Mockito** to validate business logic in isolation.
-
-| Service         | Test Class             | Example Methods Tested                |
-| --------------- | ---------------------- | ------------------------------------- |
-| user-service    | UserServiceImplTest    | `testFindById`, `testSave`            |
-| product-service | ProductServiceImplTest | `testFindById_ShouldReturnProductDto` |
-| payment-service | PaymentServiceImplTest | `testDeleteById`                      |
-
-📌 *Example (user-service):*
-
-```java
-@Test
-void testFindById() {
-    Integer userId = 1;
-    when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-    UserDto result = userServiceImpl.findById(userId);
-    assertNotNull(result);
-    assertEquals(userDto.getFirstName(), result.getFirstName());
-}
-```
-
-### 7.2 🔌 Integration Testing
-
-Validates interaction between layers using in-memory databases or containers.
-
-📌 *Example (product-service):*
-
-```java
-@Test
-public void testFindAllProducts() {
-    ResponseEntity<DtoCollectionResponse> response = restTemplate.exchange(
-        baseUrl, HttpMethod.GET, null, DtoCollectionResponse.class);
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-}
-```
-
-### 7.3 🔁 End-to-End (E2E) Testing
-
-Simulates complete business flows across multiple services.
-
-📌 *Example (order-service):*
-
-```java
-@Test
-void shouldGetOrderById() {
-    int orderId = 2;
-    ResponseEntity<String> response = restFacade.get(
-        productServiceUrl + "/order-service/api/orders/" + orderId, String.class);
-    assertTrue(response.getStatusCode().is2xxSuccessful());
-}
-```
-
-### 7.4 📊 Load & Stress Testing (Locust)
-
-Simulates user traffic to test system capacity and stability:
-
-* **10 users** for load test
-* **50 users** for stress test
-* **CSV reports** with latency, throughput, and error rate metrics
-
+> 🛠️ *COMING SOON:* 
 ---
 
 ## 📌 Conclusion
 
-This microservices architecture enables:
-
-* Independent deployment and scaling
-* Fault isolation and resilience
-* Complete DevOps automation
-* Real-world testing coverage (unit, integration, E2E, performance)
-
-With these principles in place, this eCommerce system is built for **growth, agility, and production-grade reliability**.
-
----
-
-If you’d like, I can generate a PDF version or assist in creating diagrams or deployment charts. Let me know!
+> 🛠️ *COMING SOON:* 
