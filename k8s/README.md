@@ -1,104 +1,104 @@
-# Despliegue de eCommerce Microservices en Kubernetes
+# eCommerce Microservices Deployment on Kubernetes
 
-Este directorio contiene los archivos de configuración necesarios para desplegar la aplicación eCommerce Microservices en Kubernetes.
+This directory contains the necessary configuration files to deploy the eCommerce Microservices application on Kubernetes.
 
-## Estructura de configuración
+## Configuration Structure
 
-### Enfoque de configuración centralizada
+### Centralized Configuration Approach
 
-Para simplificar la gestión de configuraciones, este proyecto utiliza un enfoque centralizado:
+To simplify configuration management, this project uses a centralized approach:
 
-- **common-config.yaml**: Un único ConfigMap que contiene:
-  - Configuraciones compartidas por todos los microservicios (conexiones a servicios, base de datos, logging)
-  - Secciones específicas para cada microservicio
-  - Variables de configuración en formato properties
+- **common-config.yaml**: A single ConfigMap that contains:
+  - Shared configurations for all microservices (service connections, database, logging)
+  - Specific sections for each microservice
+  - Configuration variables in properties format
 
-En los Deployments, usamos:
-- Variables de entorno para parámetros críticos y específicos
-- Volúmenes montados para acceder al ConfigMap común
+In Deployments, we use:
+- Environment variables for critical and specific parameters
+- Mounted volumes to access the common ConfigMap
 
-Este enfoque minimiza la duplicación de configuración y facilita la gestión centralizada de parámetros.
+This approach minimizes configuration duplication and facilitates centralized parameter management.
 
-## Estructura de directorios
+## Directory Structure
 
 ```
 k8s/
-  ├── common-config.yaml          # ConfigMap centralizado para todos los microservicios
-  ├── namespace.yaml              # Definición del namespace
+  ├── common-config.yaml          # Centralized ConfigMap for all microservices
+  ├── namespace.yaml              # Namespace definition
   ├── api-gateway/                # API Gateway
-  │   ├── deployment.yaml         # Configuración del despliegue
-  │   ├── service.yaml            # Definición del servicio
-  │   ├── ingress.yaml            # Configuración de ingress para acceso externo
-  │   └── kustomization.yaml      # Organización de recursos
+  │   ├── deployment.yaml         # Deployment configuration
+  │   ├── service.yaml            # Service definition
+  │   ├── ingress.yaml            # Ingress configuration for external access
+  │   └── kustomization.yaml      # Resource organization
   ├── order-service/              # Order Service
-  │   ├── deployment.yaml         # Configuración del despliegue
-  │   ├── service.yaml            # Definición del servicio
-  │   └── kustomization.yaml      # Organización de recursos
+  │   ├── deployment.yaml         # Deployment configuration
+  │   ├── service.yaml            # Service definition
+  │   └── kustomization.yaml      # Resource organization
   ├── favourite-service/          # Favourite Service
-  │   ├── deployment.yaml         # Configuración del despliegue
-  │   ├── service.yaml            # Definición del servicio
-  │   └── kustomization.yaml      # Organización de recursos
-  └── ... (otros servicios con estructura similar)
+  │   ├── deployment.yaml         # Deployment configuration
+  │   ├── service.yaml            # Service definition
+  │   └── kustomization.yaml      # Resource organization
+  └── ... (other services with similar structure)
 ```
 
-## Pasos para el despliegue
+## Deployment Steps
 
-### 1. Crear el namespace y la configuración común
+### 1. Create the namespace and common configuration
 
 ```bash
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/common-config.yaml
 ```
 
-### 2. Desplegar los servicios de infraestructura
+### 2. Deploy infrastructure services
 
 ```bash
 kubectl apply -k k8s/service-discovery/
 kubectl apply -k k8s/cloud-config/
 ```
 
-### 3. Desplegar el API Gateway y los microservicios
+### 3. Deploy API Gateway and microservices
 
 ```bash
 kubectl apply -k k8s/api-gateway/
 kubectl apply -k k8s/order-service/
 kubectl apply -k k8s/favourite-service/
-# ... continuar con otros servicios
+# ... continue with other services
 ```
 
-### 4. Verificar el despliegue
+### 4. Verify deployment
 
 ```bash
 kubectl get pods -n ecommerce-app
 kubectl get services -n ecommerce-app
 ```
 
-## Acceso a la aplicación
+## Application Access
 
-Para acceder a la aplicación a través del API Gateway:
+To access the application through the API Gateway:
 
 ```bash
 kubectl port-forward -n ecommerce-app svc/api-gateway 8080:8080
 ```
 
-## Actualización de configuración
+## Configuration Updates
 
-Para actualizar la configuración de todos los servicios, simplemente edita el ConfigMap común:
+To update the configuration for all services, simply edit the common ConfigMap:
 
 ```bash
 kubectl edit configmap -n ecommerce-app common-config
 ```
 
-O aplica una nueva versión:
+Or apply a new version:
 
 ```bash
 kubectl apply -f k8s/common-config.yaml
 ```
 
-## Monitoreo
+## Monitoring
 
-Para verificar los logs de un servicio específico:
+To check logs for a specific service:
 
 ```bash
-kubectl logs -n ecommerce-app deployment/[nombre-servicio]
-``` 
+kubectl logs -n ecommerce-app deployment/[service-name]
+```
