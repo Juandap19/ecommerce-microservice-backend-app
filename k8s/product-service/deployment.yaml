@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: product-service
-  #namespace: ecommerce-app
   labels:
     app: product-service
 spec:

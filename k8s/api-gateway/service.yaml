@@ -4,7 +4,6 @@ metadata:
  name: api-gateway
  labels:
    app: api-gateway
- namespace: ecommerce-app
 spec:
  type: ClusterIP
  ports:

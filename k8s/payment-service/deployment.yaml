@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: payment-service
-  #namespace: ecommerce-app
   labels:
     app: payment-service
 spec:
