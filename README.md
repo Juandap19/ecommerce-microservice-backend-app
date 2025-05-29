@@ -188,7 +188,7 @@ Lightweight services such as favourite-service can scale independently based on 
 
 ## 6. 🔄 CI/CD Pipelines 
 
-> 🛠️ *COMING SOON:* Full breakdown of Jenkins pipelines with visual stages, rollback strategies, and blue-green deployment logic. (Pending section completion.)
+> 🛠️ *COMING SOON:*
 
 ---
 
