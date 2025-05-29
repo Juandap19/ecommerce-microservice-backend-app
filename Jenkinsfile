@@ -80,8 +80,7 @@ pipeline {
 
          stage('Unit Tests') {
                     when {
-                        anyOf {
-                            branch 'dev'; branch 'master'; branch 'release'
+                       anyOf { branch 'dev'; branch 'stage'; branch 'master'
                             expression { env.BRANCH_NAME.startsWith('feature/') }
                         }
                     }
@@ -96,14 +95,13 @@ pipeline {
 
 
         stage('Integration Tests') {
-                    when {
-                        anyOf {
-                            branch 'master'
-                            expression { env.BRANCH_NAME.startsWith('feature/') }
-                            allOf { not { branch 'master' }; not { branch 'release' } }
-                        }
-                    }
-                    steps {
+                   when {
+                anyOf {
+                    branch 'dev'; branch 'stage'; branch 'master'
+                    expression { env.BRANCH_NAME.startsWith('feature/') }
+                }
+            }
+                steps {
                         script {
                             ['user-service', 'product-service'].each {
                                 bat "mvn verify -pl ${it}"
@@ -113,14 +111,12 @@ pipeline {
                 }
 
          stage('E2E Tests') {
-                    when {
-                        anyOf {
-                            branch 'master'
-                            expression { env.BRANCH_NAME.startsWith('feature/') }
-                            allOf { not { branch 'master' }; not { branch 'release' } }
-                        }
+                when {
+                    anyOf {
+                        branch 'stage'; branch 'master'
                     }
-                    steps {
+            }
+                steps {
                         bat "mvn verify -pl e2e-tests"
                     }
                 }
@@ -549,7 +545,7 @@ pipeline {
             when { anyOf { branch 'stage'; branch 'master' } }
             steps {
                 script {
-                    echo "👻👻👻👻👻"
+                    echo "====Deploy Microservices===="
                     SERVICES.split().each { svc ->
                         if (!['user-service', ].contains(svc)) {
                             bat "kubectl apply -f k8s\\${svc} -n ${K8S_NAMESPACE}"
