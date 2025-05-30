@@ -193,9 +193,6 @@ Lightweight services such as favourite-service can scale independently based on 
 
 ---
 
-Here’s a revised and improved English version of your **Testing Strategy** section. The explanation has been polished for clarity and professionalism, images are preserved, and only key code examples are mentioned as a glimpse—not in full—just enough to illustrate the testing rationale subtly.
-
----
 
 # 7. 🧪 Testing 
 ## Testing Strategy
