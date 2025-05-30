@@ -191,6 +191,9 @@ Lightweight services such as favourite-service can scale independently based on 
 
 
 
+k8s
+![alt text](image.png)
+
 ---
 
 

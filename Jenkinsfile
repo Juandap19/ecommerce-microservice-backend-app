@@ -121,8 +121,6 @@ pipeline {
         //             }
         //         }
 
-
-
        stage('Build & Package') {
                    when { anyOf { branch 'master'; branch 'stage' } }
                    steps {
@@ -387,10 +385,6 @@ pipeline {
          }
      }
 
-
-
-
-
        stage('Run Load Tests with Locust') {
            when {
                 anyOf {
@@ -540,7 +534,6 @@ pipeline {
                 bat "kubectl rollout status deployment/cloud-config -n ${K8S_NAMESPACE} --timeout=350s"
             }
         }
-
 
 
          stage('Deploy Microservices') {
