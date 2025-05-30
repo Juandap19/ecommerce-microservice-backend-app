@@ -24,7 +24,7 @@ public class UserServiceE2ETest extends E2ESuite {
     @Test
     void shouldSaveUser(){
         Map<String, Object> credentialPayload = Map.of(
-                "username", "jacotaco",
+                "username", "pati",
                 "password", "12345678",
                 "roleBasedAuthority", "ROLE_USER",
                 "isEnabled", true,
@@ -40,11 +40,11 @@ public class UserServiceE2ETest extends E2ESuite {
         );
 
         Map<String, Object> userPayload = Map.of(
-                "firstName", "Jacobo",
-                "lastName", "Ossa",
+                "firstName", "Juan David",
+                "lastName", "Patino",
                 "imageUrl", "http://placeholder:200",
-                "email", "jaco@gmial.com",
-                "phone", "3218770876",
+                "email", "juandi2321@gmial.com",
+                "phone", "3126110876",
                 "addressDtos", List.of(addressPayload),
                 "credential", credentialPayload
         );
