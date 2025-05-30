@@ -446,31 +446,42 @@ pipeline {
                    bat '''
                    echo 🔥 Launching Locust for Stress tests...
 
+                   mkdir -p locust-reports
+
                    docker run --rm --network ecommerce-test ^
+                   -v $PWD/locust-reports:/mnt/locust ^
                    -v "%CD%\\locust:/mnt" ^
                    -v "%CD%\\locust-results:/app" ^
                    minichocolate/locust:%IMAGE_TAG% ^
                    -f /mnt/test/order-service/locustfile.py ^
                    --host http://order-service-container:8300 ^
                    --headless -u 10 -r 1 -t 1m ^
+                   --only-summary ^
+                   --html /mnt/locust/order-service-report.html ^
                    --csv order-service-stress --csv-full-history
 
                    docker run --rm --network ecommerce-test ^
+                   -v $PWD/locust-reports:/mnt/locust ^
                    -v "%CD%\\locust:/mnt" ^
                    -v "%CD%\\locust-results:/app" ^
                    minichocolate/locust:%IMAGE_TAG% ^
                    -f /mnt/test/payment-service/locustfile.py ^
                    --host http://payment-service-container:8400 ^
                    --headless -u 10 -r 1 -t 1m ^
+                   --only-summary ^
+                   --html /mnt/locust/epayment-service-report.html ^
                    --csv payment-service-stress --csv-full-history
 
                    docker run --rm --network ecommerce-test ^
+                   -v $PWD/locust-reports:/mnt/locust ^
                    -v "%CD%\\locust:/mnt" ^
                    -v "%CD%\\locust-results:/app" ^
                    minichocolate/locust:%IMAGE_TAG% ^
                    -f /mnt/test/favourite-service/locustfile.py ^
                    --host http://favourite-service-container:8800 ^
                    --headless -u 10 -r 1 -t 1m ^
+                   --only-summary ^
+                   --html /mnt/locust/favourite-service-report.html ^
                    --csv favourite-service-stress --csv-full-history
 
                    echo ✅ Stress tests Completed
@@ -521,7 +532,7 @@ pipeline {
            when { anyOf { branch 'stage'; branch 'master' } }
             steps {
                 bat "kubectl apply -f k8s\\zipkin -n ${K8S_NAMESPACE}"
-                bat "kubectl rollout status deployment/zipkin -n ${K8S_NAMESPACE} --timeout=200s"
+                bat "kubectl rollout status deployment/zipkin -n ${K8S_NAMESPACE} --timeout=400s"
 
                 bat "kubectl apply -f k8s\\service-discovery -n ${K8S_NAMESPACE}"
                 bat "kubectl set image deployment/service-discovery service-discovery=${DOCKERHUB_USER}/service-discovery:${IMAGE_TAG} -n ${K8S_NAMESPACE}"
@@ -576,6 +587,12 @@ pipeline {
                     echo "🚀 Production deployment completed successfully!"
                 } else if (env.BRANCH_NAME == 'release') {
                     echo "🎯 Staging deployment completed successfully!"
+                    publishHTML([
+                        reportDir: 'locust-reports',
+                        reportFiles: 'order-service-report.html, payment-service-report.html, favourite-service-report.html',
+                        reportName: 'Locust Stress Test Reports',
+                        keepAll: true
+                    ])
                 } else {
                     echo "🔧 Development tests completed successfully!"
                 }
