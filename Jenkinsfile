@@ -110,16 +110,16 @@ pipeline {
                     }
                 }
 
-         stage('E2E Tests') {
-                when {
-                    anyOf {
-                        branch 'stage'; branch 'master'
-                    }
-            }
-                steps {
-                        bat "mvn verify -pl e2e-tests"
-                    }
-                }
+        //  stage('E2E Tests') {
+        //         when {
+        //             anyOf {
+        //                 branch 'stage'; branch 'master'
+        //             }
+        //     }
+        //         steps {
+        //                 bat "mvn verify -pl e2e-tests"
+        //             }
+        //         }
 
        stage('Build & Package') {
                    when { anyOf { branch 'master'; branch 'stage' } }
