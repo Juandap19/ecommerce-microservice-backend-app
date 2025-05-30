@@ -472,15 +472,15 @@ resultados esperados de una prueba ejecucion de estres para el flujo que tenemos
 Cargas
 
 
-![alt text](images-readme\image-payment-locust.png)
-![alt text](images-readme\image-orders-locust.png)
-![alt text](images-readme\image-favorite-locust.png)
+![alt text](images-readme/image-payment-locust.png)
+![alt text](images-readme/image-orders-locust.png)
+![alt text](images-readme/image-favorite-locust.png)
 
 
 Levantando Locust para prueba de estres.
 
-![alt text](images-readme\image-estres-Locust.png)
-![alt text](images-readme\image-estres-order.png)
+![alt text](images-readme/image-estres-Locust.png)
+![alt text](images-readme/image-estres-order.png)
 
 
 ## 8. 📌 Conclusion
