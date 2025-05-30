@@ -1,6 +1,15 @@
 pipeline {
     agent any
 
+
+    // ✅ CONFIGURACIÓN DE TIMEOUT GLOBAL
+    options {
+        timeout(time: 45, unit: 'MINUTES')  // Timeout total del pipeline
+        retry(1)  // Reintentar una vez si falla
+        timestamps()  // Mostrar timestamps en logs
+    }
+
+
     tools {
         maven 'mvn'
         jdk 'JDK_11'
