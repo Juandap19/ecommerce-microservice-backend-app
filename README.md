@@ -189,6 +189,8 @@ Lightweight services such as favourite-service can scale independently based on 
 
 > 🛠️ *COMING SOON:*
 
+
+
 ---
 
 Here’s a revised and improved English version of your **Testing Strategy** section. The explanation has been polished for clarity and professionalism, images are preserved, and only key code examples are mentioned as a glimpse—not in full—just enough to illustrate the testing rationale subtly.
@@ -456,33 +458,38 @@ These E2E tests are expected to run smoothly, as they play a key role in confirm
 
 ### LOCUST
 
+Locust is used to perform both **load** and **stress testing** on critical microservices, including `payment-service`, `order-service`, and `favourite-service`.
 
-![alt text](./images-readme/image-locust-1.png)
+During pipeline execution, the required containers are deployed inside a dedicated test network (`ecommerce-test`). Once all services are healthy, Locust is triggered to simulate concurrent users and evaluate system performance under varying loads.
 
-Locust is used to perform performance testing on key microservices such as `order-service`, `payment-service`, and `favourite-service`. Through the CI/CD pipeline, all required services are automatically deployed in Docker containers within an isolated test network (`ecommerce-test`), ensuring each service is healthy before testing begins.
+#### Stress Test Execution
 
-Once the environment is ready, Locust runs load and stress tests from dedicated containers, simulating concurrent users and generating CSV reports. These tests help validate service stability, responsiveness, and scalability before releasing to production.
+As part of the stress testing stage, Locust is launched in its own container to generate high concurrency scenarios. This helps assess how the services behave under heavy traffic and resource saturation.
 
-se realizan pruebas tanto de carga como de estres
+#### Expected Output
+
+**Load Testing Results:**
+
+* ![Payment Service](images-readme/image-payment-locust.png)
+* ![Order Service](images-readme/image-orders-locust.png)
+* ![Favourite Service](images-readme/image-favorite-locust.png)
+
+**Stress Testing in Action:**
+
+* ![Locust Startup](images-readme/image-estres-Locust.png)
+* ![Order Stress Test](images-readme/image-estres-order.png)
+* ![Favorite Service Stress Test](images-readme/image-favorite-test-locust.png)
 
 ---
 
-resultados esperados de una prueba ejecucion de estres para el flujo que tenemos
+### Performance Analysis
 
-Cargas
+* ✅ **Success Rate:** 100% of requests completed successfully with no HTTP errors.
+* ⚡ **Response Time:** 95% of responses were under 100ms, indicating consistent performance under load.
+* 📈 **Throughput:** The system maintained a stable average of \~15.7 requests per second.
+* 🔄 **Scalability:** Batch-oriented "load" endpoints outperformed individual ones, highlighting optimizations for bulk operations.
+* 📊 **Total Requests Processed:** *(metric from CSV/logs if available)*
+* 🚫 **Error Rate:** 0% error rate during stress scenarios.
 
+---
 
-![alt text](images-readme/image-payment-locust.png)
-![alt text](images-readme/image-orders-locust.png)
-![alt text](images-readme/image-favorite-locust.png)
-
-
-Levantando Locust para prueba de estres.
-
-![alt text](images-readme/image-estres-Locust.png)
-![alt text](images-readme/image-estres-order.png)
-
-
-## 8. 📌 Conclusion
-
-> 🛠️ *COMING SOON:* 

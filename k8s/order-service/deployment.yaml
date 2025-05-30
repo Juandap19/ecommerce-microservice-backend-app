@@ -50,14 +50,14 @@ spec:
           httpGet:
             path: /order-service/actuator/health
             port: 8300
-          initialDelaySeconds: 90
+          initialDelaySeconds: 200
           periodSeconds: 10
           failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /order-service/actuator/health
             port: 8300
-          initialDelaySeconds: 60
+          initialDelaySeconds: 200
           periodSeconds: 5
           failureThreshold: 3
         volumeMounts:

@@ -32,7 +32,7 @@ spec:
           httpGet:
             path: /actuator/health
             port: 9296
-          initialDelaySeconds: 30
+          initialDelaySeconds: 200
           periodSeconds: 15
           timeoutSeconds: 5
         readinessProbe:

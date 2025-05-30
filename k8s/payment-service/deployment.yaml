@@ -52,14 +52,14 @@ spec:
             httpGet:
               path: /payment-service/actuator/health
               port: 8400
-            initialDelaySeconds: 60 # Tiempo para que el servicio inicie completamente
+            initialDelaySeconds: 200 # Tiempo para que el servicio inicie completamente
             periodSeconds: 10
             failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /payment-service/actuator/health
               port: 8400
-            initialDelaySeconds: 30
+            initialDelaySeconds: 200
             periodSeconds: 10
             failureThreshold: 3
           volumeMounts:

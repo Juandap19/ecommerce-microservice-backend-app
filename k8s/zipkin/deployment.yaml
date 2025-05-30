@@ -30,13 +30,13 @@ spec:
           httpGet:
             path: /health # Correct health endpoint for Zipkin
             port: 9411
-          initialDelaySeconds: 30
+          initialDelaySeconds: 200
           periodSeconds: 15
           timeoutSeconds: 5
         livenessProbe:
           httpGet:
             path: /health # Correct health endpoint for Zipkin
             port: 9411
-          initialDelaySeconds: 60
+          initialDelaySeconds: 200
           periodSeconds: 30
           timeoutSeconds: 5 

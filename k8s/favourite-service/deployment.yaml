@@ -56,14 +56,14 @@ spec:
           httpGet:
             path: /favourite-service/actuator/health
             port: 8800
-          initialDelaySeconds: 180
+          initialDelaySeconds: 200
           periodSeconds: 10
           failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /favourite-service/actuator/health
             port: 8800
-          initialDelaySeconds: 150
+          initialDelaySeconds: 200
           periodSeconds: 10
           failureThreshold: 3
         volumeMounts:
