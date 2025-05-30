@@ -185,14 +185,342 @@ Lightweight services such as favourite-service can scale independently based on 
 
 ---
 
-## 6. 🔄 CI/CD Pipelines 
 
-> 🛠️ *COMING SOON:*
+Here's your improved and well-formatted version in **English**, with the original structure and content preserved but presented in a cleaner, more professional layout:
 
+---
 
+## 6. 🔄 CI/CD Pipelines
 
-k8s
-![alt text](image.png)
+---
+
+### 🛠️ Pipeline Configuration
+
+* **Maven:** `mvn` – For Java project building and testing
+* **JDK:** `JDK_11` – Java Development Kit version 11
+* **Docker Hub User:** `minichocolate` – Container registry account
+* **Kubernetes Namespace:** `ecommerce` – Target deployment namespace
+
+---
+
+### ⚙️ Pipeline Parameters
+
+* **`GENERATE_RELEASE_NOTES`** (Boolean): Enables automatic release notes generation
+* **`BUILD_TAG`** (String): Release identifier (defaults to `BUILD_ID`)
+
+---
+
+### 📋 Detailed Stage Analysis
+
+---
+
+#### Init Stage
+
+* **Purpose:** Configure environment based on Git branch
+* **Execution:** Always
+* **Logic:**
+
+  ```groovy
+  def profileConfig = [
+      master : ['prod', '-prod'],
+      release: ['stage', '-stage']
+  ]
+  def config = profileConfig.get(env.BRANCH_NAME, ['dev', '-dev'])
+  ```
+* **Branch-specific Behavior:**
+
+  * `master`: Sets **production** profile (`prod`, `-prod`)
+  * `release`: Sets **staging** profile (`stage`, `-stage`)
+  * Others: Sets **development** profile (`dev`, `-dev`)
+* **Outputs:**
+
+  * `SPRING_PROFILES_ACTIVE`: Spring Boot config profile
+  * `IMAGE_TAG`: Docker image tag
+  * `DEPLOYMENT_SUFFIX`: Kubernetes deployment suffix
+
+---
+
+#### Ensure Namespace Stage
+
+* **Purpose:** Prepare Kubernetes namespace
+* **Execution:** Always
+* **Command:**
+
+  ```bash
+  kubectl get namespace ${ns} || kubectl create namespace ${ns}
+  ```
+* **Logic:** Creates namespace if it doesn't exist
+
+---
+
+#### Checkout Stage
+
+* **Purpose:** Retrieve source code
+* **Execution:** Always
+* **Repository:**
+  `https://github.com/Juandap19/ecommerce-microservice-backend-app.git`
+
+---
+
+#### Verify Tools Stage
+
+* **Purpose:** Validate environment
+* **Execution:** Always
+* **Checks:**
+
+  * Java version
+  * Maven availability
+  * Docker status
+  * Kubernetes connectivity
+
+---
+
+#### Unit Tests Stage
+
+* **Purpose:** Test individual services
+* **Execution Condition:**
+
+  ```groovy
+  when {
+      anyOf {
+          branch 'dev'; branch 'stage'; branch 'master'
+          expression { env.BRANCH_NAME.startsWith('feature/') }
+      }
+  }
+  ```
+* **Services:** `user-service`, `product-service`, `payment-service`
+* **Command:**
+
+  ```bash
+  mvn test -pl ${service}
+  ```
+
+---
+
+#### Integration Tests Stage
+
+* **Purpose:** Test service interactions
+* **Execution Condition:** Same as Unit Tests
+* **Services:** `user-service`, `product-service`
+* **Command:**
+
+  ```bash
+  mvn verify -pl ${service}
+  ```
+
+---
+
+#### E2E Tests Stage
+
+* **Purpose:** Validate complete application workflows
+* **Execution Condition:**
+
+  ```groovy
+  when {
+      anyOf { branch 'stage'; branch 'master' }
+  }
+  ```
+* **Command:**
+
+  ```bash
+  mvn verify -pl e2e-tests
+  ```
+
+---
+
+#### Build & Package Stage
+
+* **Purpose:** Compile and package application
+* **Execution Condition:** For `master` and `stage` branches
+* **Command:**
+
+  ```bash
+  mvn clean package -DskipTests
+  ```
+
+---
+
+#### Build & Push Docker Images Stage
+
+* **Purpose:** Build and push Docker images
+* **Execution Condition:** Same as previous stage
+* **Process:**
+
+  * Docker login using credentials
+  * For each service:
+
+    ```bash
+    docker build -t ${DOCKERHUB_USER}/${service}:${IMAGE_TAG}
+    docker push ${DOCKERHUB_USER}/${service}:${IMAGE_TAG}
+    ```
+
+---
+
+#### Start Containers for Testing Stage
+
+* **Purpose:** Launch local containers for testing
+* **Execution Condition:**
+
+  ```groovy
+  when {
+      anyOf { branch 'dev'; env.BRANCH_NAME.startsWith('feature/') }
+  }
+  ```
+* **Includes:**
+
+  * Health check functions (`Wait-ForHealthCheck`, `WithJq`)
+  * Docker network creation (`ecommerce-test`)
+  * Startup of: Zipkin, Eureka, Config Server
+  * Services: `order`, `payment`, `product`, `shipping`, `user`, `favourite`
+* **Error Handling:** Full cleanup, detailed error reporting
+
+---
+
+#### Run Load Tests with Locust Stage
+
+* **Purpose:** Simulate normal user load
+* **Execution Condition:** Same as container start
+* **Services:** `order`, `payment`, `favourite`
+* **Parameters:**
+
+  * Users: 5
+  * Rate: 1 user/s
+  * Duration: 1 min
+* **Command:**
+
+  ```bash
+  docker run --rm --network ecommerce-test ... locust ...
+  ```
+
+---
+
+#### Run Stress Tests with Locust Stage
+
+* **Purpose:** Simulate high load
+* **Execution Condition:** Same as load tests
+* **Users:** 10 (double the load test)
+* **Results:** Saved with `-stress` suffix
+
+---
+
+#### Stop and Remove Containers Stage
+
+* **Purpose:** Clean up all containers and network
+* **Execution Condition:** Same as container start
+
+---
+
+#### Deploy Common Config Stage
+
+* **Purpose:** Apply shared Kubernetes configs
+* **Execution Condition:** `stage` or `master`
+* **Command:**
+
+  ```bash
+  kubectl apply -f k8s/common-config.yaml -n ${K8S_NAMESPACE}
+  ```
+
+---
+
+#### Deploy Core Services Stage
+
+* **Purpose:** Deploy Zipkin, Eureka, Config Server
+* **Execution Condition:** Same as common config
+* **Includes:**
+
+  * Deployment config
+  * Image updates
+  * Env variables
+  * Rollout status checks (timeouts: 200s–350s)
+
+---
+
+#### Deploy Microservices Stage
+
+* **Purpose:** Deploy all application services
+* **Execution Condition:** Same as core services
+* **Logic (excluding `user-service`):**
+
+  ```groovy
+  SERVICES.split().each { svc -> ... }
+  ```
+
+---
+
+#### Generate Release Notes Stage
+
+* **Purpose:** Automatically document build
+* **Execution Condition:** If `GENERATE_RELEASE_NOTES` is true
+* **Contents:**
+
+  * Build metadata, Git info
+  * Deployed services and images
+  * Test results
+  * Pipeline summary
+* **Fallback:** Generates minimal notes on failure
+
+---
+
+### 🏁 Post-Build Actions
+
+#### ✅ Success
+
+* Custom success message based on branch:
+
+  * `master`: Production
+  * `release`: Staging
+  * Others: Development
+
+#### ❌ Failure
+
+* Logs, notifications, and debug info
+
+#### ⚠️ Unstable
+
+* Handles partial failures (e.g., failed tests)
+
+#### 📦 Always
+
+* Archives release notes if generated
+
+---
+
+### 📊 Environment-Specific Execution Flow
+
+---
+
+#### 🧪 Development (dev / feature/\*)
+
+* Stages: Init → Namespace → Checkout → Verify → Unit + Integration
+* Containers launched locally
+* Load and stress tests run
+* Containers cleaned up
+* Optional release notes
+
+---
+
+#### 🚧 Staging (release)
+
+* Stages: Init → Namespace → Checkout → Verify → All tests
+* Build & package → Docker build/push → Kubernetes deploy
+* Optional release notes
+
+---
+
+#### 🚀 Production (master)
+
+* Same as staging
+* Adds production-specific logs and notifications
+
+---
+
+### ✨ Key Features
+
+* **Health Monitoring:** Robust health checks with timeouts and logs
+* **Load Strategy:** Load → Stress, historical result tracking
+* **Error Resilience:** Cleanup on failure, fallback notes
+* **Security:** Credential management, secure Docker & RBAC
+* **Scalability:** Dynamic service logic, env-agnostic scripts
 
 ---
 
