@@ -530,11 +530,11 @@ Here's your improved and well-formatted version in **English**, with the origina
 
 My testing strategy is designed to ensure the reliability and robustness of the system throughout different environments:
 
-In the **`master`** branch, all critical tests—**unit tests**, **integration tests**, and **end-to-end (E2E)** tests—are executed. This guarantees that each component functions correctly, services integrate seamlessly, and the application behaves as expected from the user’s perspective.
+In the **`master`** branch, all critical tests for the  **end-to-end (E2E)** tests—are executed. This guarantees that each component functions correctly, services integrate seamlessly, and the application behaves as expected from the user’s perspective.
 
 In the **`dev`** branch, we run all the tests mentioned above, **except E2E tests**. Additionally, we include **performance testing with Locust**, focusing on stress scenarios to measure system behavior under load. These help us uncover bottlenecks early in the development cycle.
 
-The **`stage`** branch mirrors the `master` in terms of testing coverage, ensuring that any deployment candidate meets the highest quality standards before reaching production.
+The **`stage`** all the test, ensuring that any deployment candidate meets the highest quality standards before reaching production.
 
 > ![Testing Strategy Diagram](./images-readme/image-test.png)
 
@@ -783,6 +783,10 @@ This setup enables validation of the complete user journey, from browsing produc
 These E2E tests are expected to run smoothly, as they play a key role in confirming that the entire system works cohesively from the user's perspective.
 
 ---
+
+
+
+
 
 ### LOCUST
 
