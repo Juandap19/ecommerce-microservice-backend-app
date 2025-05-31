@@ -1,15 +1,6 @@
 pipeline {
     agent any
 
-
-    // ✅ CONFIGURACIÓN DE TIMEOUT GLOBAL
-    options {
-        timeout(time: 45, unit: 'MINUTES')  // Timeout total del pipeline
-        retry(1)  // Reintentar una vez si falla
-        timestamps()  // Mostrar timestamps en logs
-    }
-
-
     tools {
         maven 'mvn'
         jdk 'JDK_11'
@@ -76,23 +67,41 @@ pipeline {
         }
 
         stage('Verify Tools') {
-                            steps {
-                                bat 'java -version'
-                                bat 'mvn -version'
-                                bat 'docker --version'
-                                bat 'kubectl config current-context'
+            steps {
+                bat 'java -version'
+                bat 'mvn -version'
+                bat 'docker --version'
+                bat 'kubectl config current-context'
 
-                            }
-                        }
+            }
+        }
 
+        stage('Build & Package') {
+                  when { anyOf { branch 'master'; branch 'stage' ; branch 'dev'} }
+                  steps {
+                      bat "mvn clean package -DskipTests"
+                         }
+                  }
+
+        stage('Build & Push Docker Images') {
+               when { anyOf { branch 'master'; branch 'stage' ; branch 'dev'} }
+              steps {
+                  withCredentials([string(credentialsId: "${DOCKER_CREDENTIALS_ID}", variable: 'password')]) {
+                      bat "docker login -u ${DOCKERHUB_USER} -p ${password}"
+
+                      script {
+                          SERVICES.split().each { service ->
+                              bat "docker build -t ${DOCKERHUB_USER}/${service}:${IMAGE_TAG} .\\${service}"
+                              bat "docker push ${DOCKERHUB_USER}/${service}:${IMAGE_TAG}"
+                          }
+                      }
+                  }
+              }
+          }
 
 
          stage('Unit Tests') {
-                    when {
-                       anyOf { branch 'dev'; branch 'stage'; branch 'master'
-                            expression { env.BRANCH_NAME.startsWith('feature/') }
-                        }
-                    }
+                     when { anyOf { branch 'dev'; } }
                     steps {
                         script {
                             ['user-service', 'product-service', 'payment-service'].each {
@@ -104,13 +113,8 @@ pipeline {
 
 
         stage('Integration Tests') {
-                   when {
-                anyOf {
-                    branch 'dev'; branch 'stage'; branch 'master'
-                    expression { env.BRANCH_NAME.startsWith('feature/') }
-                }
-            }
-                steps {
+                    when { anyOf { branch 'stage'; } }
+                    steps {
                         script {
                             ['user-service', 'product-service'].each {
                                 bat "mvn verify -pl ${it}"
@@ -119,51 +123,20 @@ pipeline {
                     }
                 }
 
-        //  stage('E2E Tests') {
-        //         when {
-        //             anyOf {
-        //                 branch 'stage'; branch 'master'
-        //             }
-        //     }
-        //         steps {
-        //                 bat "mvn verify -pl e2e-tests"
-        //             }
-        //         }
+         stage('E2E Tests') {
+                    when { anyOf { branch 'stage'; } }
+                    steps {
+                        bat "mvn verify -pl e2e-tests"
+                    }
+                }
 
-       stage('Build & Package') {
-                   when { anyOf { branch 'master'; branch 'stage' } }
-                   steps {
-                       bat "mvn clean package -DskipTests"
-                   }
-               }
-
-       stage('Build & Push Docker Images') {
-           when { anyOf { branch 'stage'; branch 'master' } }
-           steps {
-               withCredentials([string(credentialsId: "${DOCKER_CREDENTIALS_ID}", variable: 'password')]) {
-                   bat "docker login -u ${DOCKERHUB_USER} -p ${password}"
-
-                   script {
-                       SERVICES.split().each { service ->
-                           bat "docker build -t ${DOCKERHUB_USER}/${service}:${IMAGE_TAG} .\\${service}"
-                           bat "docker push ${DOCKERHUB_USER}/${service}:${IMAGE_TAG}"
-                       }
-                   }
-               }
-           }
-       }
 
      stage('Start containers for testing') {
-         when {
-                anyOf {
-                    branch 'dev'
-                    expression { env.BRANCH_NAME.startsWith('feature/') }
-                }
-            }
+              when { anyOf { branch 'stage'; } }
          steps {
              script {
                  powershell '''
-                 # Function to wait for a service to be healthy
+                  # Function to wait for a service to be healthy
                  function Wait-ForHealthCheck {
                      param(
                          [string]$Url,
@@ -171,34 +144,34 @@ pipeline {
                          [int]$TimeoutSeconds = 300
                      )
 
-                     Write-Host "⌛ Waiting $ServiceName..." -ForegroundColor Yellow
+                     Write-Host "⌛ Waiting for $ServiceName..." -ForegroundColor Yellow
                      $startTime = Get-Date
 
                      do {
                          try {
                              $response = Invoke-RestMethod -Uri $Url -Method Get -TimeoutSec 5 -ErrorAction SilentlyContinue
                              if ($response.status -eq "UP") {
-                                 Write-Host "✅ $ServiceName It's healthy!" -ForegroundColor Green
+                                  Write-Host "✅ $ServiceName is healthy!" -ForegroundColor Green
                                  return $true
                              }
                          }
                          catch {
-                             # Retry until successful
+                                        # Retry until successful
                          }
 
                          Start-Sleep -Seconds 5
                          $elapsed = (Get-Date) - $startTime
 
                          if ($elapsed.TotalSeconds -gt $TimeoutSeconds) {
-                             Write-Host "❌ Timeout Waiting $ServiceName" -ForegroundColor Red
+                             Write-Host "❌ Timeout waiting for $ServiceName" -ForegroundColor Red
                              return $false
                          }
 
-                         Write-Host "⌛ Waiting $ServiceName... ($([int]$elapsed.TotalSeconds)s)" -ForegroundColor Yellow
+                           Write-Host "⌛ Waiting for $ServiceName... ($([int]$elapsed.TotalSeconds)s)" -ForegroundColor Yellow
                      } while ($true)
                  }
 
-                 # Function to wait for health check with complex JSON
+                  # Function to wait for health check with complex JSON
                  function Wait-ForHealthCheckWithJq {
                      param(
                          [string]$Url,
@@ -206,74 +179,75 @@ pipeline {
                          [int]$TimeoutSeconds = 300
                      )
 
-                     Write-Host "⌛ Waiting $ServiceName..." -ForegroundColor Yellow
+                     Write-Host "⌛ Waiting for $ServiceName..." -ForegroundColor Yellow
                      $startTime = Get-Date
 
                      do {
                          try {
                              $response = Invoke-RestMethod -Uri $Url -Method Get -TimeoutSec 5 -ErrorAction SilentlyContinue
                              if ($response.status -eq "UP") {
-                                 Write-Host "✅ $ServiceName It's healthy!" -ForegroundColor Green
+                                  Write-Host "✅ $ServiceName is healthy!" -ForegroundColor Green
                                  return $true
                              }
                          }
                          catch {
-                             # Retry until successful
+                                 # Retry until successful
                          }
 
                          Start-Sleep -Seconds 5
                          $elapsed = (Get-Date) - $startTime
 
                          if ($elapsed.TotalSeconds -gt $TimeoutSeconds) {
-                             Write-Host "❌ Timeout Waiting $ServiceName" -ForegroundColor Red
+                              Write-Host "❌ Timeout waiting for $ServiceName" -ForegroundColor Red
                              return $false
                          }
 
-                         Write-Host "⌛ Waiting $ServiceName... ($([int]$elapsed.TotalSeconds)s)" -ForegroundColor Yellow
+                          Write-Host "⌛ Waiting for $ServiceName... ($([int]$elapsed.TotalSeconds)s)" -ForegroundColor Yellow
                      } while ($true)
                  }
 
                  try {
-                     # create Docker network if it doesn't exist
-                     Write-Host "🌐 Creando red de Docker..." -ForegroundColor Cyan
+                       # create Docker network if it doesn't exist
+                     Write-Host "🌐 Creating Docker network..." -ForegroundColor Cyan
                      docker network create ecommerce-test 2>$null
                      if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1) {
                          throw "Error creating Docker network"
                      }
 
                      # 1. ZIPKIN
-                     Write-Host "🚀 Launching ZIPKIN..." -ForegroundColor Cyan
+                      Write-Host "🚀 Starting ZIPKIN..." -ForegroundColor Cyan
                      docker run -d --name zipkin-container --network ecommerce-test -p 9411:9411 openzipkin/zipkin
-                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Zipkin" }
+                      if ($LASTEXITCODE -ne 0) { throw "Error starting Zipkin" }
 
                      # 2. EUREKA (Service Discovery)
-                     Write-Host "🚀 Launching EUREKA..." -ForegroundColor Cyan
+                      Write-Host "🚀 Starting EUREKA..." -ForegroundColor Cyan
                      docker run -d --name service-discovery-container --network ecommerce-test -p 8761:8761 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
                          minichocolate/service-discovery:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Eureka" }
+                       if ($LASTEXITCODE -ne 0) { throw "Error starting Eureka" }
+
 
                      if (!(Wait-ForHealthCheck -Url "http://localhost:8761/actuator/health" -ServiceName "EUREKA")) {
                          throw "Eureka could not be started correctly"
                      }
 
                      # 3. CLOUD-CONFIG
-                     Write-Host "🚀 Launching CLOUD-CONFIG..." -ForegroundColor Cyan
+                     Write-Host "🚀 Starting CLOUD-CONFIG..." -ForegroundColor Cyan
                      docker run -d --name cloud-config-container --network ecommerce-test -p 9296:9296 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
                          -e EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-discovery-container:8761/eureka/ `
                          -e EUREKA_INSTANCE=cloud-config-container `
                          minichocolate/cloud-config:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Cloud Config" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error starting Cloud Config" }
 
                      if (!(Wait-ForHealthCheck -Url "http://localhost:9296/actuator/health" -ServiceName "CLOUD-CONFIG")) {
                          throw "CLOUD-CONFIG could not be started correctly"
                      }
 
                      # 4. ORDER-SERVICE
-                     Write-Host "🚀 Launching ORDER-SERVICE..." -ForegroundColor Cyan
+                     Write-Host "🚀 Starting ORDER-SERVICE..." -ForegroundColor Cyan
                      docker run -d --name order-service-container --network ecommerce-test -p 8300:8300 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -281,14 +255,14 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=order-service-container `
                         minichocolate/order-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Order Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error starting Order Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8300/order-service/actuator/health" -ServiceName "ORDER-SERVICE")) {
                          throw "ORDER-SERVICE could not be started correctly"
                      }
 
                      # 5. PAYMENT-SERVICE
-                     Write-Host "🚀 Launching PAYMENT..." -ForegroundColor Cyan
+                     Write-Host "🚀 Starting PAYMENT..." -ForegroundColor Cyan
                      docker run -d --name payment-service-container --network ecommerce-test -p 8400:8400 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -296,14 +270,14 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=payment-service-container `
                          minichocolate/payment-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Payment Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error starting Payment Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8400/payment-service/actuator/health" -ServiceName "PAYMENT-SERVICE")) {
                          throw "PAYMENT-SERVICE could not be started correctly"
                      }
 
                      # 6. PRODUCT-SERVICE
-                     Write-Host "🚀 Launching PRODUCT..." -ForegroundColor Cyan
+                     Write-Host "🚀 Starting PRODUCT..." -ForegroundColor Cyan
                      docker run -d --name product-service-container --network ecommerce-test -p 8500:8500 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -311,14 +285,14 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=product-service-container `
                          minichocolate/product-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Product Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error starting Product Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8500/product-service/actuator/health" -ServiceName "PRODUCT-SERVICE")) {
                          throw "PRODUCT-SERVICE could not be started correctly"
                      }
 
                      # 7. SHIPPING-SERVICE
-                     Write-Host "🚀 Launching SHIPPING..." -ForegroundColor Cyan
+                     Write-Host "🚀 Starting SHIPPING..." -ForegroundColor Cyan
                      docker run -d --name shipping-service-container --network ecommerce-test -p 8600:8600 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -326,14 +300,14 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=shipping-service-container `
                         minichocolate/shipping-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Shipping Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error starting Shipping Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8600/shipping-service/actuator/health" -ServiceName "SHIPPING-SERVICE")) {
                          throw "SHIPPING-SERVICE could not be started correctly"
                      }
 
                      # 8. USER-SERVICE
-                     Write-Host "🚀 Launching USER..." -ForegroundColor Cyan
+                     Write-Host "🚀 Starting USER..." -ForegroundColor Cyan
                      docker run -d --name user-service-container --network ecommerce-test -p 8700:8700 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -341,14 +315,14 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=user-service-container `
                          minichocolate/user-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error Launching User Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error starting User Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8700/user-service/actuator/health" -ServiceName "USER-SERVICE")) {
                          throw "USER-SERVICE could not be started correctly"
                      }
 
                      # 9. FAVOURITE-SERVICE
-                     Write-Host "🚀 Launching FAVOURITE..." -ForegroundColor Cyan
+                     Write-Host "🚀 Starting FAVOURITE..." -ForegroundColor Cyan
                      docker run -d --name favourite-service-container --network ecommerce-test -p 8800:8800 `
                          -e SPRING_PROFILES_ACTIVE=dev `
                          -e SPRING_ZIPKIN_BASE_URL=http://zipkin-container:9411 `
@@ -356,19 +330,19 @@ pipeline {
                          -e EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://service-discovery-container:8761/eureka `
                          -e EUREKA_INSTANCE=favourite-service-container `
                          minichocolate/favourite-service:${env:IMAGE_TAG}
-                     if ($LASTEXITCODE -ne 0) { throw "Error Launching Favourite Service" }
+                     if ($LASTEXITCODE -ne 0) { throw "Error starting Favourite Service" }
 
                      if (!(Wait-ForHealthCheckWithJq -Url "http://localhost:8800/favourite-service/actuator/health" -ServiceName "FAVOURITE-SERVICE")) {
                          throw "FAVOURITE-SERVICE could not be started correctly"
                      }
 
-                     Write-Host "✅ All containers are up and healthy" -ForegroundColor Green
+                     Write-Host "✅ All containers are up and healthy." -ForegroundColor Green
                  }
                  catch {
                      Write-Host "❌ Error: $_" -ForegroundColor Red
-                     Write-Host "🧹 Cleaning Containers..." -ForegroundColor Yellow
+                     Write-Host "🧹 Cleaning up containers..." -ForegroundColor Yellow
 
-                     # Cleanup containers if any error occurs
+                     # Cleanup in case of error
                      $containers = @(
                          "favourite-service-container",
                          "user-service-container",
@@ -387,131 +361,118 @@ pipeline {
                      }
 
                      docker network rm ecommerce-test 2>$null
-                     throw "Failed to start all containers. Check the logs for details."
+                     throw "Failed to start containers"
                  }
                  '''
              }
          }
      }
 
-       stage('Run Load Tests with Locust') {
-           when {
-                anyOf {
-                    branch 'dev'
-                    expression { env.BRANCH_NAME.startsWith('feature/') }
+        stage('Run Load Tests with Locust') {
+            when { anyOf { branch 'stage'; } }
+            steps {
+                script {
+                    bat '''
+                    echo 🚀 Starting Locust for order-service...
+
+                    if not exist locust-reports mkdir locust-reports
+
+                    docker run --rm --network ecommerce-test ^
+                    -v "%CD%/locust-reports:/mnt/locust" ^
+                    -v "%CD%/locust:/mnt" ^
+                    -v "%CD%/locust-results:/app" ^
+                    minichocolate/locust:%IMAGE_TAG% ^
+                    -f /mnt/test/order-service/locustfile.py ^
+                    --host http://order-service-container:8300 ^
+                    --headless -u 5 -r 1 -t 1m ^
+                    --only-summary ^
+                    --html /mnt/locust/order-service-report.html
+
+                    echo 🚀 Starting Locust for payment-service...
+
+                    docker run --rm --network ecommerce-test ^
+                    -v "%CD%/locust-reports:/mnt/locust" ^
+                    -v "%CD%/locust:/mnt" ^
+                    -v "%CD%/locust-results:/app" ^
+                    minichocolate/locust:%IMAGE_TAG% ^
+                    -f /mnt/test/payment-service/locustfile.py ^
+                    --host http://payment-service-container:8400 ^
+                    --headless -u 5 -r 1 -t 1m ^
+                    --only-summary ^
+                    --html /mnt/locust/payment-service-report.html
+
+                    echo 🚀 Starting Locust for favourite-service...
+
+                    docker run --rm --network ecommerce-test ^
+                    -v "%CD%/locust-reports:/mnt/locust" ^
+                    -v "%CD%/locust:/mnt" ^
+                    -v "%CD%/locust-results:/app" ^
+                    minichocolate/locust:%IMAGE_TAG% ^
+                    -f /mnt/test/favourite-service/locustfile.py ^
+                    --host http://favourite-service-container:8800 ^
+                    --headless -u 5 -r 1 -t 1m ^
+                    --only-summary ^
+                    --html /mnt/locust/favourite-service-report.html
+
+                    echo ✅ Tests completed
+                    '''
                 }
             }
-           steps {
-               script {
-                   bat '''
+        }
 
-                   echo 🚀 Launching Locust for order-service...
-                   docker run --rm --network ecommerce-test ^
-                     -v "%CD%\\locust:/mnt" ^
-                     -v "%CD%\\locust-results:/app" ^
-                     minichocolate/locust:%IMAGE_TAG% ^
-                     -f /mnt/test/order-service/locustfile.py ^
-                     --host http://order-service-container:8300 ^
-                     --headless -u 5 -r 1 -t 1m ^
-                     --csv order-service-stats --csv-full-history
+        stage('Run Stress Tests with Locust') {
+            when { anyOf { branch 'stage'; } }
+            steps {
+                script {
+                    bat '''
+                    echo 🔥 Starting Locust for stress testing...
 
-                   echo 🚀 Launching Locust for payment-service...
+                    docker run --rm --network ecommerce-test ^
+                    -v "%CD%/locust-reports:/mnt/locust" ^
+                    -v "%CD%/locust:/mnt" ^
+                    -v "%CD%/locust-results:/app" ^
+                    minichocolate/locust:%IMAGE_TAG% ^
+                    -f /mnt/test/order-service/locustfile.py ^
+                    --host http://order-service-container:8300 ^
+                    --headless -u 10 -r 1 -t 1m ^
+                    --only-summary ^
+                    --html /mnt/locust/stress-order-service-report.html
 
-                   docker run --rm --network ecommerce-test ^
-                     -v "%CD%\\locust:/mnt" ^
-                     -v "%CD%\\locust-results:/app" ^
-                     minichocolate/locust:%IMAGE_TAG% ^
-                     -f /mnt/test/payment-service/locustfile.py ^
-                     --host http://payment-service-container:8400 ^
-                     --headless -u 5 -r 1 -t 1m ^
-                     --csv payment-service-stats --csv-full-history
+                    docker run --rm --network ecommerce-test ^
+                    -v "%CD%/locust-reports:/mnt/locust" ^
+                    -v "%CD%/locust:/mnt" ^
+                    -v "%CD%/locust-results:/app" ^
+                    minichocolate/locust:%IMAGE_TAG% ^
+                    -f /mnt/test/payment-service/locustfile.py ^
+                    --host http://payment-service-container:8400 ^
+                    --headless -u 10 -r 1 -t 1m ^
+                    --only-summary ^
+                    --html /mnt/locust/stress-payment-service-report.html
 
-                   echo 🚀 Launching Locust for favourite-service...
+                    docker run --rm --network ecommerce-test ^
+                    -v "%CD%/locust-reports:/mnt/locust" ^
+                    -v "%CD%/locust:/mnt" ^
+                    -v "%CD%/locust-results:/app" ^
+                    minichocolate/locust:%IMAGE_TAG% ^
+                    -f /mnt/test/favourite-service/locustfile.py ^
+                    --host http://favourite-service-container:8800 ^
+                    --headless -u 10 -r 1 -t 1m ^
+                    --only-summary ^
+                    --html /mnt/locust/stress-favourite-service-report.html
 
-                   docker run --rm --network ecommerce-test ^
-                     -v "%CD%\\locust:/mnt" ^
-                     -v "%CD%\\locust-results:/app" ^
-                     minichocolate/locust:%IMAGE_TAG% ^
-                     -f /mnt/test/favourite-service/locustfile.py ^
-                     --host http://favourite-service-container:8800 ^
-                     --headless -u 5 -r 1 -t 1m ^
-                     --csv favourite-service-stats --csv-full-history
-
-                   echo ✅ Tests Completed
-                   '''
-               }
-           }
-       }
-
-       stage('Run Stress Tests with Locust') {
-           when {
-                anyOf {
-                    branch 'dev'
-                    expression { env.BRANCH_NAME.startsWith('feature/') }
+                    echo ✅ Stress tests completed
+                    '''
                 }
             }
-           steps {
-               script {
-                   bat '''
-                   echo 🔥 Launching Locust for Stress tests...
-
-                   mkdir -p locust-reports
-
-                   docker run --rm --network ecommerce-test ^
-                   -v $PWD/locust-reports:/mnt/locust ^
-                   -v "%CD%\\locust:/mnt" ^
-                   -v "%CD%\\locust-results:/app" ^
-                   minichocolate/locust:%IMAGE_TAG% ^
-                   -f /mnt/test/order-service/locustfile.py ^
-                   --host http://order-service-container:8300 ^
-                   --headless -u 10 -r 1 -t 1m ^
-                   --only-summary ^
-                   --html /mnt/locust/order-service-report.html ^
-                   --csv order-service-stress --csv-full-history
-
-                   docker run --rm --network ecommerce-test ^
-                   -v $PWD/locust-reports:/mnt/locust ^
-                   -v "%CD%\\locust:/mnt" ^
-                   -v "%CD%\\locust-results:/app" ^
-                   minichocolate/locust:%IMAGE_TAG% ^
-                   -f /mnt/test/payment-service/locustfile.py ^
-                   --host http://payment-service-container:8400 ^
-                   --headless -u 10 -r 1 -t 1m ^
-                   --only-summary ^
-                   --html /mnt/locust/epayment-service-report.html ^
-                   --csv payment-service-stress --csv-full-history
-
-                   docker run --rm --network ecommerce-test ^
-                   -v $PWD/locust-reports:/mnt/locust ^
-                   -v "%CD%\\locust:/mnt" ^
-                   -v "%CD%\\locust-results:/app" ^
-                   minichocolate/locust:%IMAGE_TAG% ^
-                   -f /mnt/test/favourite-service/locustfile.py ^
-                   --host http://favourite-service-container:8800 ^
-                   --headless -u 10 -r 1 -t 1m ^
-                   --only-summary ^
-                   --html /mnt/locust/favourite-service-report.html ^
-                   --csv favourite-service-stress --csv-full-history
-
-                   echo ✅ Stress tests Completed
-                   '''
-               }
-           }
-       }
-
+        }
 
 
        stage('Stop and remove containers') {
-         when {
-                anyOf {
-                    branch 'dev'
-                    expression { env.BRANCH_NAME.startsWith('feature/') }
-                }
-            }
+                 when { anyOf { branch 'stage'; } }
            steps {
                script {
                    bat """
-                   echo 🛑 Stop and remove containers...
+                   echo 🛑 Stopping and removing containers...
 
                    docker rm -f locust || exit 0
                    docker rm -f favourite-service-container || exit 0
@@ -530,48 +491,45 @@ pipeline {
            }
        }
 
+
         stage('Deploy Common Config') {
-            when { anyOf { branch 'stage'; branch 'master' } }
+             when { anyOf { branch 'master'; } }
             steps {
                 bat "kubectl apply -f k8s\\common-config.yaml -n ${K8S_NAMESPACE}"
             }
         }
 
         stage('Deploy Core Services') {
-           when { anyOf { branch 'stage'; branch 'master' } }
+              when { anyOf { branch 'master'; } }
             steps {
                 bat "kubectl apply -f k8s\\zipkin -n ${K8S_NAMESPACE}"
-                bat "kubectl rollout status deployment/zipkin -n ${K8S_NAMESPACE} --timeout=400s"
+                bat "kubectl rollout status deployment/zipkin -n ${K8S_NAMESPACE} --timeout=200s"
 
                 bat "kubectl apply -f k8s\\service-discovery -n ${K8S_NAMESPACE}"
                 bat "kubectl set image deployment/service-discovery service-discovery=${DOCKERHUB_USER}/service-discovery:${IMAGE_TAG} -n ${K8S_NAMESPACE}"
-                bat "kubectl set env deployment/service-discovery SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE} -n ${K8S_NAMESPACE}"
-                bat "kubectl rollout status deployment/service-discovery -n ${K8S_NAMESPACE} --timeout=350s"
+                bat "kubectl rollout status deployment/service-discovery -n ${K8S_NAMESPACE} --timeout=400s"
 
                 bat "kubectl apply -f k8s\\cloud-config -n ${K8S_NAMESPACE}"
                 bat "kubectl set image deployment/cloud-config cloud-config=${DOCKERHUB_USER}/cloud-config:${IMAGE_TAG} -n ${K8S_NAMESPACE}"
-                bat "kubectl set env deployment/cloud-config SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE} -n ${K8S_NAMESPACE}"
                 bat "kubectl rollout status deployment/cloud-config -n ${K8S_NAMESPACE} --timeout=350s"
             }
         }
 
-
          stage('Deploy Microservices') {
-            when { anyOf { branch 'stage'; branch 'master' } }
-            steps {
-                script {
-                    echo "====Deploy Microservices===="
-                    SERVICES.split().each { svc ->
-                        if (!['user-service', ].contains(svc)) {
-                            bat "kubectl apply -f k8s\\${svc} -n ${K8S_NAMESPACE}"
-                            bat "kubectl set image deployment/${svc} ${svc}=${DOCKERHUB_USER}/${svc}:${IMAGE_TAG} -n ${K8S_NAMESPACE}"
-                            bat "kubectl set env deployment/${svc} SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE} -n ${K8S_NAMESPACE}"
-                            bat "kubectl rollout status deployment/${svc} -n ${K8S_NAMESPACE} --timeout=300s"
-                        }
-                    }
-                }
-            }
-        } 
+             when { anyOf { branch 'master'; } }
+             steps {
+                 script {
+                     def appServices = ['user-service']
+                     echo "👻"
+                     appServices.each { svc ->
+                         bat "kubectl apply -f k8s\\${svc} -n ${K8S_NAMESPACE}"
+                         bat "kubectl set image deployment/${svc} ${svc}=${DOCKERHUB_USER}/${svc}:${IMAGE_TAG} -n ${K8S_NAMESPACE}"
+                         bat "kubectl set env deployment/${svc} SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE} -n ${K8S_NAMESPACE}"
+                         bat "kubectl rollout status deployment/${svc} -n ${K8S_NAMESPACE} --timeout=400s"
+                     }
+                 }
+             }
+         }
 
         stage('Generate Release Notes') {
             when {
@@ -579,7 +537,7 @@ pipeline {
             }
             steps {
                 script {
-                    echo "=== GENERATE THE RELEASE NOTES ==="
+                    echo "=== GENERATE RELEASE NOTES ==="
                     generateReleaseNotes()
                 }
             }
@@ -594,7 +552,7 @@ pipeline {
 
                 if (env.BRANCH_NAME == 'master') {
                     echo "🚀 Production deployment completed successfully!"
-                } else if (env.BRANCH_NAME == 'release') {
+                } else if (env.BRANCH_NAME == 'stage') {
                     echo "🎯 Staging deployment completed successfully!"
                     publishHTML([
                         reportDir: 'locust-reports',
@@ -633,7 +591,7 @@ pipeline {
 }
 
 def generateReleaseNotes() {
-    echo "Automatically generating Release Notes..."
+    echo "Generating automatic Release Notes..."
 
     try {
         def buildTag = params.BUILD_TAG ?: env.BUILD_ID
@@ -721,8 +679,8 @@ ${deploymentStatus}
 
         writeFile(file: releaseNotesFile, text: releaseNotes)
 
-        echo "✅ Release Notes generados exitosamente: ${releaseNotesFile}"
-        echo "📄 Archivo será archivado como artifact"
+        echo "✅ Release Notes generated successfully: ${releaseNotesFile}"
+        echo "📄 File will be save as artifact"
 
         // Display summary in console
         echo """
@@ -735,8 +693,8 @@ ${deploymentStatus}
 """
 
     } catch (Exception e) {
-        echo "⚠️ Error generando Release Notes: ${e.message}"
-        echo "Pipeline continuará sin Release Notes"
+        echo "⚠️ Error generating Release Notes: ${e.message}"
+        echo "Pipeline will continue without Release Notes"
 
         // Create minimal release notes
         def fallbackFile = "release-notes-${params.BUILD_TAG ?: env.BUILD_ID}-minimal.md"
