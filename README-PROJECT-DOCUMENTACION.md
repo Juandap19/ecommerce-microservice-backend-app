@@ -185,11 +185,6 @@ Lightweight services such as favourite-service can scale independently based on 
 
 ---
 
-
-Here's your improved and well-formatted version in **English**, with the original structure and content preserved but presented in a cleaner, more professional layout:
-
----
-
 ## 6. 🔄 CI/CD Pipelines
 
 ---
