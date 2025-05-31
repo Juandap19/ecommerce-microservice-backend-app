@@ -183,6 +183,9 @@ Lightweight services such as favourite-service can scale independently based on 
 * Jenkins automates post-build deployments
 
 
+![alt text](image-8.png)
+![alt text](image-7.png)
+
 ---
 
 ## 6. 🔄 CI/CD Pipelines
@@ -516,6 +519,21 @@ Lightweight services such as favourite-service can scale independently based on 
 * **Error Resilience:** Cleanup on failure, fallback notes
 * **Security:** Credential management, secure Docker & RBAC
 * **Scalability:** Dynamic service logic, env-agnostic scripts
+
+---
+
+### Development Environment Pipeline (dev) Expected ✅
+![alt text](images-readme/image-1.png)
+
+### Staging Environment Pipeline (stage) Expected ✅
+![alt text](images-readme/image-4.png)
+
+### Deployment Pipeline (master / Production) Expected ✅
+![alt text](images-readme/image-5.png)
+
+### Results
+
+![alt text](images-readmeimage-6.png)
 
 ---
 
